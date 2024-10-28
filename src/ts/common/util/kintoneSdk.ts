@@ -25,6 +25,10 @@ export interface ParamsToDeleteRecords {
 
 export class KintoneUrlUtil {
   // private fields: Record<string, KintoneFormFieldProperty.OneOf> = {};
+  public getApps = async () => {
+    const restApiClient = this.getRestApiClient();
+    return restApiClient.app.getApps({});
+  };
 
   public getRestApiClient(): KintoneRestAPIClient {
     return new KintoneRestAPIClient({});
@@ -52,6 +56,11 @@ export class Sdk {
 
   constructor() {
     this.kintoneUrlUtil = new KintoneUrlUtil();
+  }
+
+  public async getApps() {
+    const res = await this.kintoneUrlUtil.getApps();
+    return res;
   }
 
   public async getFields(appId: number) {

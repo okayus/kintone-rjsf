@@ -24,12 +24,12 @@ const baseSchema: RJSFSchema = {
       items: {
         type: "object",
         properties: {
-          inputField: {
+          app: {
             type: "string",
             title: "患者マスターアプリ",
             oneOf: [],
           },
-          displaySpace: {
+          primaryKeyField: {
             type: "string",
             title: "患者・カルテID",
             oneOf: [],
@@ -50,69 +50,20 @@ type FieldType = {
   enabled?: boolean;
 };
 
-type Field = {
-  elementId: string;
-  size?: {
-    width: string;
-    height: string;
-  };
-  type: string;
-};
-
-type Row = {
-  type: "ROW";
-  fields: Field[];
-};
-
-type ResultItem = {
-  const: string;
-  title: string;
-};
-
 const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
-  const [inputFieldOptions, setInputFieldOptions] = useState<any>([]);
-  const [displaySpaceOptions, setDisplaySpaceOptions] = useState<any>([]);
+  const [appOptions, setAppOptions] = useState<any>([]);
+  const [primaryKeyField, setPrimaryKeyFieldOptions] = useState<any>([]);
   const [formData, setFormData] = useState<any>({});
-  const appId = kintone.app.getId();
 
   useEffect(() => {
+    console.log("useEffect start");
     const fetchApps = async () => {
       try {
-        const fields = await cacheAPI.getFields(appId);
-        const filteredFieldsOptions = Object.entries(fields)
-          .filter(
-            ([_, field]) => (field as FieldType).type === "MULTI_LINE_TEXT",
-          )
-          .map(([_, field]) => ({
-            const: (field as FieldType).label,
-            title: (field as FieldType).code,
-          }));
-        filteredFieldsOptions.unshift({ const: "", title: "" });
-        setInputFieldOptions(filteredFieldsOptions);
-
-        const layout = await cacheAPI.getFormLayout(appId);
-        const displaySpaceOption: ResultItem[] = [];
-
-        const processRow = (row: Row) => {
-          row.fields.forEach((field) => {
-            if (field.elementId) {
-              displaySpaceOption.push({
-                const: field.elementId,
-                title: field.elementId,
-              });
-            }
-          });
-        };
-
-        layout.forEach((item: any) => {
-          if (item.type === "ROW") {
-            processRow(item);
-          } else if (item.type === "GROUP") {
-            item.layout.forEach((row: any) => processRow(row));
-          }
+        const response = await cacheAPI.getApps();
+        const options = response.apps.map((app: any) => {
+          return { const: app.appId, title: app.name };
         });
-        displaySpaceOption.unshift({ const: "", title: "" });
-        setDisplaySpaceOptions(displaySpaceOption);
+        setAppOptions(options);
 
         const responseConfig = kintone.plugin.app.getConfig(pluginId);
         if (responseConfig.config) {
@@ -139,7 +90,26 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
     );
   };
 
-  const handleChange = (data: IChangeEvent<any, RJSFSchema, any>) => {
+  const handleChange = async (data: IChangeEvent<any, RJSFSchema, any>) => {
+    if (data.formData.settings.length === 0) {
+      return;
+    }
+    console.log("handleChange start", data);
+    for (const setting of data.formData.settings) {
+      const fields = await cacheAPI.getFields(setting.app);
+      const filteredFieldsOptions = Object.entries(fields)
+        .filter(
+          ([_, field]) => (field as FieldType).type === "SINGLE_LINE_TEXT",
+        )
+        .map(([_, field]) => ({
+          const: (field as FieldType).label,
+          title: (field as FieldType).code,
+        }));
+      filteredFieldsOptions.unshift({ const: "", title: "" });
+      setPrimaryKeyFieldOptions(filteredFieldsOptions);
+    }
+
+    console.log("handleChange end", data);
     setFormData(data.formData);
   };
 
@@ -160,13 +130,13 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
             (baseSchema.properties.settings.items as JSONSchema7).properties
               ? (baseSchema.properties.settings.items as JSONSchema7).properties
               : {}),
-            inputField: {
+            app: {
               type: "string",
-              oneOf: inputFieldOptions,
+              oneOf: appOptions,
             },
-            displaySpace: {
+            primaryKeyField: {
               type: "string",
-              oneOf: displaySpaceOptions,
+              oneOf: primaryKeyField,
             },
           },
         },
