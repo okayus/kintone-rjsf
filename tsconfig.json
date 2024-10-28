@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "es2015",
+    "jsx": "react",
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "verbatimModuleSyntax": true,
+    "checkJs": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "types": [
+      "@types/node",
+      "@kintone/dts-gen/kintone.d.ts",
+      "./types/fields.d.ts",
+    ],
+    "paths": {
+      "@desktop/*": ["./src/ts/desktop/*"],
+      "@config/*": ["./src/ts/config/*"],
+      "@assets/*": ["./assets/*"]
+    }
+  },
+  "include": ["./src/ts/**/*.ts", "./src/ts/**/*.tsx"],
+  "exclude": ["dist", "node_modules"]
+}
