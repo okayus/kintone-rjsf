@@ -52,22 +52,24 @@ type FieldType = {
 
 const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
   const [appOptions, setAppOptions] = useState<any>([]);
-  const [primaryKeyField, setPrimaryKeyFieldOptions] = useState<any>([]);
-  const [formData, setFormData] = useState<any>({});
+  const [primaryKeyFieldOptions, setPrimaryKeyFieldOptions] = useState<any>([]);
+  const [formData, setFormData] = useState<any>({ settings: [] });
 
   useEffect(() => {
-    console.log("useEffect start");
     const fetchApps = async () => {
       try {
         const response = await cacheAPI.getApps();
-        const options = response.apps.map((app: any) => {
-          return { const: app.appId, title: app.name };
-        });
+        const options = response.apps.map((app: any) => ({
+          const: app.appId,
+          title: app.name,
+        }));
         setAppOptions(options);
 
         const responseConfig = kintone.plugin.app.getConfig(pluginId);
         if (responseConfig.config) {
           const parsedConfig = JSON.parse(responseConfig.config).config;
+          const newPrimaryKeyFieldOptions: any[][] = [];
+
           for (const setting of parsedConfig.settings) {
             const fields = await cacheAPI.getFields(setting.app);
             const filteredFieldsOptions = Object.entries(fields)
@@ -80,8 +82,10 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
                 title: (field as FieldType).code,
               }));
             filteredFieldsOptions.unshift({ const: "", title: "" });
-            setPrimaryKeyFieldOptions(filteredFieldsOptions);
+            newPrimaryKeyFieldOptions.push(filteredFieldsOptions);
           }
+
+          setPrimaryKeyFieldOptions(newPrimaryKeyFieldOptions);
           setFormData(parsedConfig);
         }
       } catch (error) {
@@ -108,7 +112,8 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
     if (data.formData.settings.length === 0) {
       return;
     }
-    console.log("handleChange start", data);
+
+    const updatedPrimaryKeyFieldOptions: any[][] = [];
     for (const setting of data.formData.settings) {
       const fields = await cacheAPI.getFields(setting.app);
       const filteredFieldsOptions = Object.entries(fields)
@@ -120,10 +125,10 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
           title: (field as FieldType).code,
         }));
       filteredFieldsOptions.unshift({ const: "", title: "" });
-      setPrimaryKeyFieldOptions(filteredFieldsOptions);
+      updatedPrimaryKeyFieldOptions.push(filteredFieldsOptions);
     }
 
-    console.log("handleChange end", data);
+    setPrimaryKeyFieldOptions(updatedPrimaryKeyFieldOptions);
     setFormData(data.formData);
   };
 
@@ -150,7 +155,10 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
             },
             primaryKeyField: {
               type: "string",
-              oneOf: primaryKeyField,
+              oneOf:
+                primaryKeyFieldOptions.length > 0
+                  ? primaryKeyFieldOptions.flat()
+                  : [],
             },
           },
         },
