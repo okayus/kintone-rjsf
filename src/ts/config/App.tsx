@@ -67,8 +67,22 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
 
         const responseConfig = kintone.plugin.app.getConfig(pluginId);
         if (responseConfig.config) {
-          const parsedConfig = JSON.parse(responseConfig.config);
-          setFormData(parsedConfig.config);
+          const parsedConfig = JSON.parse(responseConfig.config).config;
+          for (const setting of parsedConfig.settings) {
+            const fields = await cacheAPI.getFields(setting.app);
+            const filteredFieldsOptions = Object.entries(fields)
+              .filter(
+                ([_, field]) =>
+                  (field as FieldType).type === "SINGLE_LINE_TEXT",
+              )
+              .map(([_, field]) => ({
+                const: (field as FieldType).label,
+                title: (field as FieldType).code,
+              }));
+            filteredFieldsOptions.unshift({ const: "", title: "" });
+            setPrimaryKeyFieldOptions(filteredFieldsOptions);
+          }
+          setFormData(parsedConfig);
         }
       } catch (error) {
         console.error("Failed to fetch apps:", error);
