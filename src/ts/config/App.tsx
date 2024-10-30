@@ -52,40 +52,45 @@ type FieldType = {
 
 const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
   const [appOptions, setAppOptions] = useState<any>([]);
-  const [primaryKeyFieldOptions, setPrimaryKeyFieldOptions] = useState<any>([]);
-  const [formData, setFormData] = useState<any>({ settings: [] });
+  const [primaryKeyFieldOptions, setPrimaryKeyFieldOptions] = useState<any[][]>(
+    [[{ const: "", title: "" }]],
+  );
+  const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
     const fetchApps = async () => {
       try {
         const response = await cacheAPI.getApps();
-        const options = response.apps.map((app: any) => ({
+        const appItemOptions = response.apps.map((app: any) => ({
           const: app.appId,
           title: app.name,
         }));
-        setAppOptions(options);
+        setAppOptions(appItemOptions);
 
         const responseConfig = kintone.plugin.app.getConfig(pluginId);
         if (responseConfig.config) {
           const parsedConfig = JSON.parse(responseConfig.config).config;
-          const newPrimaryKeyFieldOptions: any[][] = [];
 
-          for (const setting of parsedConfig.settings) {
-            const fields = await cacheAPI.getFields(setting.app);
-            const filteredFieldsOptions = Object.entries(fields)
-              .filter(
-                ([_, field]) =>
-                  (field as FieldType).type === "SINGLE_LINE_TEXT",
-              )
-              .map(([_, field]) => ({
-                const: (field as FieldType).label,
-                title: (field as FieldType).code,
-              }));
-            filteredFieldsOptions.unshift({ const: "", title: "" });
-            newPrimaryKeyFieldOptions.push(filteredFieldsOptions);
-          }
+          const fieldOptions = await Promise.all(
+            parsedConfig.settings.map(async (setting: any) => {
+              const fields = await cacheAPI.getFields(setting.app);
+              return Object.entries(fields)
+                .filter(
+                  ([, field]) =>
+                    (field as FieldType).type === "SINGLE_LINE_TEXT",
+                )
+                .map(([, field]) => ({
+                  const: (field as FieldType).label,
+                  title: (field as FieldType).code,
+                }));
+            }),
+          );
 
-          setPrimaryKeyFieldOptions(newPrimaryKeyFieldOptions);
+          const initialPrimaryKeyFieldOptions = fieldOptions.map((options) => [
+            { const: "", title: "" },
+            ...options,
+          ]);
+          setPrimaryKeyFieldOptions(initialPrimaryKeyFieldOptions);
           setFormData(parsedConfig);
         }
       } catch (error) {
@@ -109,24 +114,23 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
   };
 
   const handleChange = async (data: IChangeEvent<any, RJSFSchema, any>) => {
-    if (data.formData.settings.length === 0) {
-      return;
-    }
-
-    const updatedPrimaryKeyFieldOptions: any[][] = [];
-    for (const setting of data.formData.settings) {
-      const fields = await cacheAPI.getFields(setting.app);
-      const filteredFieldsOptions = Object.entries(fields)
-        .filter(
-          ([_, field]) => (field as FieldType).type === "SINGLE_LINE_TEXT",
-        )
-        .map(([_, field]) => ({
-          const: (field as FieldType).label,
-          title: (field as FieldType).code,
-        }));
-      filteredFieldsOptions.unshift({ const: "", title: "" });
-      updatedPrimaryKeyFieldOptions.push(filteredFieldsOptions);
-    }
+    const updatedPrimaryKeyFieldOptions = await Promise.all(
+      data.formData.settings.map(async (setting: any, index: number) => {
+        if (setting.app) {
+          const fields = await cacheAPI.getFields(setting.app);
+          const filteredFieldsOptions = Object.entries(fields)
+            .filter(
+              ([, field]) => (field as FieldType).type === "SINGLE_LINE_TEXT",
+            )
+            .map(([, field]) => ({
+              const: (field as FieldType).label,
+              title: (field as FieldType).code,
+            }));
+          return [{ const: "", title: "" }, ...filteredFieldsOptions];
+        }
+        return primaryKeyFieldOptions[index] || [{ const: "", title: "" }];
+      }),
+    );
 
     setPrimaryKeyFieldOptions(updatedPrimaryKeyFieldOptions);
     setFormData(data.formData);
@@ -155,10 +159,13 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
             },
             primaryKeyField: {
               type: "string",
-              oneOf:
-                primaryKeyFieldOptions.length > 0
-                  ? primaryKeyFieldOptions.flat()
-                  : [],
+              oneOf: (formData.settings || []).map((_: any, index: number) => ({
+                type: "string",
+                title: "患者・カルテID",
+                oneOf: primaryKeyFieldOptions[index] || [
+                  { const: "", title: "" },
+                ],
+              })),
             },
           },
         },
