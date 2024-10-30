@@ -7,38 +7,11 @@ import { CacheAPI } from "../common/util/CacheAPI";
 
 import type { IChangeEvent } from "@rjsf/core";
 import type { RJSFSchema } from "@rjsf/utils";
-import type { JSONSchema7 } from "json-schema";
 
 interface AppProps {
   pluginId: string;
   cacheAPI: CacheAPI;
 }
-
-const baseSchema: RJSFSchema = {
-  title: "プラグインの設定",
-  type: "object",
-  properties: {
-    settings: {
-      type: "array",
-      title: "設定",
-      items: {
-        type: "object",
-        properties: {
-          app: {
-            type: "string",
-            title: "患者マスターアプリ",
-            oneOf: [],
-          },
-          primaryKeyField: {
-            type: "string",
-            title: "患者・カルテID",
-            oneOf: [],
-          },
-        },
-      },
-    },
-  },
-};
 
 const log = (type: string) => console.log.bind(console, type);
 type FieldType = {
@@ -136,25 +109,19 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
     setFormData(data.formData);
   };
 
-  const dynamicSchema = {
-    ...baseSchema,
+  const dynamicSchema: RJSFSchema = {
+    title: "プラグインの設定",
+    type: "object",
     properties: {
-      ...baseSchema.properties,
       settings: {
-        ...(typeof baseSchema.properties?.settings === "object" &&
-        baseSchema.properties.settings !== null
-          ? (baseSchema.properties.settings as JSONSchema7)
-          : {}),
+        type: "array",
+        title: "設定",
         items: {
           type: "object",
           properties: {
-            ...(typeof baseSchema.properties?.settings === "object" &&
-            baseSchema.properties.settings.items !== null &&
-            (baseSchema.properties.settings.items as JSONSchema7).properties
-              ? (baseSchema.properties.settings.items as JSONSchema7).properties
-              : {}),
             app: {
               type: "string",
+              title: "患者マスターアプリ",
               oneOf: appOptions,
             },
             primaryKeyField: {
