@@ -35,7 +35,7 @@ const CustomPrimaryKeyField: React.FC<CustomPrimaryKeyFieldProps> = ({
   cacheAPI,
 }) => {
   const [options, setOptions] = useState<any[]>([]);
-  const appId = uiSchema?.appId;
+  const appId = uiSchema?.appId[0];
 
   useEffect(() => {
     const fetchPrimaryKeyFieldOptions = async () => {
