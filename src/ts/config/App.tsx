@@ -6,7 +6,7 @@ import validator from "@rjsf/validator-ajv8";
 import { CacheAPI } from "../common/util/CacheAPI";
 
 import type { IChangeEvent } from "@rjsf/core";
-import type { RJSFSchema } from "@rjsf/utils";
+import type { FieldProps, RJSFSchema, UiSchema } from "@rjsf/utils";
 
 interface AppProps {
   pluginId: string;
@@ -23,11 +23,62 @@ type FieldType = {
   enabled?: boolean;
 };
 
-const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
-  const [appOptions, setAppOptions] = useState<any>([]);
-  const [primaryKeyFieldOptions, setPrimaryKeyFieldOptions] = useState<any[][]>(
-    [[{ const: "", title: "" }]],
+interface CustomPrimaryKeyFieldProps extends FieldProps {
+  appId?: string;
+  cacheAPI: CacheAPI;
+}
+
+const CustomPrimaryKeyField: React.FC<CustomPrimaryKeyFieldProps> = ({
+  formData,
+  onChange,
+  uiSchema,
+  cacheAPI,
+}) => {
+  const [options, setOptions] = useState<any[]>([]);
+  const appId = uiSchema?.appId;
+
+  useEffect(() => {
+    const fetchPrimaryKeyFieldOptions = async () => {
+      if (appId) {
+        const fields = await cacheAPI.getFields(appId);
+        const filteredOptions = Object.entries(fields)
+          .filter(
+            ([_, field]) => (field as FieldType).type === "SINGLE_LINE_TEXT",
+          )
+          .map(([_, field]) => ({
+            const: (field as FieldType).label,
+            title: (field as FieldType).code,
+          }));
+        setOptions([{ const: "", title: "" }, ...filteredOptions]);
+      }
+    };
+
+    fetchPrimaryKeyFieldOptions();
+  }, [appId, cacheAPI]);
+
+  return (
+    <select value={formData || ""} onChange={(e) => onChange(e.target.value)}>
+      {options.map((option) => (
+        <option key={option.const} value={option.const}>
+          {option.title}
+        </option>
+      ))}
+    </select>
   );
+};
+
+const CustomPrimaryKeyFieldWrapper = (cacheAPI: CacheAPI) => {
+  const WrappedCustomPrimaryKeyField = (props: FieldProps) => (
+    <CustomPrimaryKeyField {...props} cacheAPI={cacheAPI} />
+  );
+
+  WrappedCustomPrimaryKeyField.displayName = "WrappedCustomPrimaryKeyField";
+
+  return WrappedCustomPrimaryKeyField;
+};
+
+const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
+  const [appOptions, setAppOptions] = useState<any[]>([]);
   const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
@@ -42,29 +93,7 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
 
         const responseConfig = kintone.plugin.app.getConfig(pluginId);
         if (responseConfig.config) {
-          const parsedConfig = JSON.parse(responseConfig.config).config;
-
-          const fieldOptions = await Promise.all(
-            parsedConfig.settings.map(async (setting: any) => {
-              const fields = await cacheAPI.getFields(setting.app);
-              return Object.entries(fields)
-                .filter(
-                  ([, field]) =>
-                    (field as FieldType).type === "SINGLE_LINE_TEXT",
-                )
-                .map(([, field]) => ({
-                  const: (field as FieldType).label,
-                  title: (field as FieldType).code,
-                }));
-            }),
-          );
-
-          const initialPrimaryKeyFieldOptions = fieldOptions.map((options) => [
-            { const: "", title: "" },
-            ...options,
-          ]);
-          setPrimaryKeyFieldOptions(initialPrimaryKeyFieldOptions);
-          setFormData(parsedConfig);
+          setFormData(JSON.parse(responseConfig.config).config);
         }
       } catch (error) {
         console.error("Failed to fetch apps:", error);
@@ -74,9 +103,8 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
     fetchApps();
   }, [pluginId, cacheAPI]);
 
-  const handleSubmit = (data: IChangeEvent<any, RJSFSchema, any>) => {
-    const submittedData = data.formData;
-    const configSetting = { config: submittedData };
+  const handleSubmit = (data: IChangeEvent<any>) => {
+    const configSetting = { config: data.formData };
     kintone.plugin.app.setConfig(
       { config: JSON.stringify(configSetting) },
       function () {
@@ -86,30 +114,7 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
     );
   };
 
-  const handleChange = async (data: IChangeEvent<any, RJSFSchema, any>) => {
-    const updatedPrimaryKeyFieldOptions = await Promise.all(
-      data.formData.settings.map(async (setting: any, index: number) => {
-        if (setting.app) {
-          const fields = await cacheAPI.getFields(setting.app);
-          const filteredFieldsOptions = Object.entries(fields)
-            .filter(
-              ([, field]) => (field as FieldType).type === "SINGLE_LINE_TEXT",
-            )
-            .map(([, field]) => ({
-              const: (field as FieldType).label,
-              title: (field as FieldType).code,
-            }));
-          return [{ const: "", title: "" }, ...filteredFieldsOptions];
-        }
-        return primaryKeyFieldOptions[index] || [{ const: "", title: "" }];
-      }),
-    );
-
-    setPrimaryKeyFieldOptions(updatedPrimaryKeyFieldOptions);
-    setFormData(data.formData);
-  };
-
-  const dynamicSchema: RJSFSchema = {
+  const dynamicSchema = {
     title: "プラグインの設定",
     type: "object",
     properties: {
@@ -126,15 +131,23 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
             },
             primaryKeyField: {
               type: "string",
-              oneOf: (formData.settings || []).map((_: any, index: number) => ({
-                type: "string",
-                title: "患者・カルテID",
-                oneOf: primaryKeyFieldOptions[index] || [
-                  { const: "", title: "" },
-                ],
-              })),
+              title: "患者・カルテID",
             },
           },
+        },
+      },
+    },
+  };
+
+  const uiSchema = {
+    settings: {
+      items: {
+        app: {
+          "ui:widget": "select",
+        },
+        primaryKeyField: {
+          "ui:field": "customPrimaryKeyField",
+          appId: (formData.settings || []).map((setting: any) => setting.app),
         },
       },
     },
@@ -143,10 +156,13 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
   return (
     <Form
       schema={dynamicSchema as RJSFSchema}
+      uiSchema={uiSchema as UiSchema}
       validator={validator}
-      onChange={handleChange}
-      onSubmit={handleSubmit}
       formData={formData}
+      onSubmit={handleSubmit}
+      onChange={(data) => setFormData(data.formData)}
+      // eslint-disable-next-line new-cap
+      fields={{ customPrimaryKeyField: CustomPrimaryKeyFieldWrapper(cacheAPI) }}
       onError={log("errors")}
     />
   );
