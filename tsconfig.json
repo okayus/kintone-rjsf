@@ -24,6 +24,7 @@
       "@types/node",
       "@kintone/dts-gen/kintone.d.ts",
       "./types/fields.d.ts",
+      "vitest/globals"
     ],
     "paths": {
       "@desktop/*": ["./src/ts/desktop/*"],
@@ -31,6 +32,6 @@
       "@assets/*": ["./assets/*"]
     }
   },
-  "include": ["./src/ts/**/*.ts", "./src/ts/**/*.tsx"],
+  "include": ["./src/ts/**/*.ts", "./src/ts/**/*.tsx","vitest-setup.ts"],
   "exclude": ["dist", "node_modules"]
 }
