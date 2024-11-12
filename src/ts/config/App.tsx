@@ -115,7 +115,7 @@ const App: React.FC<AppProps> = ({ pluginId, cacheAPI }) => {
   };
 
   const dynamicSchema = {
-    title: "プラグインの設定",
+    title: "プラグインの設定t",
     type: "object",
     properties: {
       settings: {
