@@ -1,6 +1,7 @@
 {
   "name": "kintone-rezept-importer",
   "version": "0.1.0",
+  "type": "module",
   "scripts": {
     "start": "node scripts/npm-start.js",
     "develop_vite_config": "vite build -c vite_config.config.ts --watch",

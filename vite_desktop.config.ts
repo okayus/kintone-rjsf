@@ -2,6 +2,7 @@ import path from "path";
 
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import tsconfigPaths from "vite-tsconfig-paths";
 
 const root = `${process.cwd()}`;
 
@@ -13,7 +14,7 @@ export default defineConfig({
     target: "es2015",
     outDir: `${path.resolve(__dirname)}/dist/out`,
     emptyOutDir: false,
-    sourcemap: false,
+    sourcemap: true,
     minify: "esbuild",
     chunkSizeWarningLimit: 1000,
     reportCompressedSize: true,
@@ -23,23 +24,14 @@ export default defineConfig({
         desktop: `${path.resolve(root, "src/ts/desktop/index.tsx")}/`,
       },
       output: {
-        format: "module",
-        preserveModules: false,
-        manualChunks: {
-          config: [`${path.resolve(root, "src/ts/desktop/index.tsx")}/`],
-        },
+        format: "iife",
         entryFileNames: "js/[name].js",
-        assetFileNames: "js/[name][extname]",
+        chunkFileNames: "js/[name]-chunk.js",
       },
     },
   },
   esbuild: {
     drop: ["console", "debugger"],
   },
-  plugins: [react()],
-  test: {
-    globals: true,
-    environment: "happy-dom",
-    setupFiles: ["./vitest-setup.ts"],
-  },
+  plugins: [react(), tsconfigPaths()],
 });
