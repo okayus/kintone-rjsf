@@ -5,7 +5,7 @@
   "type": "APP",
   "desktop": {
     "js": [
-      "js/kintone-rezept-importer-desktop.js"
+      "js/desktop.js"
     ],
     "css": [
       "css/51-modern-default.css",
@@ -16,7 +16,7 @@
   "config": {
     "html": "html/config.html",
     "js": [
-      "js/kintone-rezept-importer-config.js"
+      "js/config.js"
     ],
     "css": [
       "css/51-modern-default.css",
@@ -28,7 +28,7 @@
   },
   "name": {
     "en": "kintone-rezept-importer",
-    "ja": "RJSF動作確認プラグインtd"
+    "ja": "RJSF動作確認プラグインtdd"
   },
   "description": {
     "en": "kintone-rezept-importer",
